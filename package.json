@@ -1,0 +1,22 @@
+{
+  "name": "php-container-test-mcp",
+  "version": "1.0.0",
+  "description": "MCP server for running PHP tests inside Docker containers",
+  "main": "src/index.js",
+  "bin": {
+    "php-container-test-mcp": "src/index.js"
+  },
+  "scripts": {
+    "start": "node src/index.js"
+  },
+  "dependencies": {
+    "@modelcontextprotocol/sdk": "^1.10.0",
+    "zod": "^3.0.0"
+  },
+  "engines": {
+    "node": ">=18"
+  },
+  "publishConfig": {
+    "access": "public"
+  }
+}
