@@ -13,13 +13,13 @@ jobs:
 
       - uses: actions/setup-node@v4
         with:
-          node-version: '>=18'
+          node-version: '18'
           registry-url: 'https://registry.npmjs.org'
 
       - run: npm ci
 
       - name: Set version from tag
-        run: npm version ${GITHUB_REF_NAME#v} --no-git-tag-version
+        run: npm version $(echo $GITHUB_REF_NAME | sed 's/^v//') --no-git-tag-version
 
       - run: npm publish
         env:
