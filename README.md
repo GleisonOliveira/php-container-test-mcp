@@ -4,11 +4,12 @@ An MCP (Model Context Protocol) server that lets AI agents run PHP unit and inte
 
 ## What it does
 
-Exposes a single MCP tool, `run_container_php_tests`, that:
+Exposes two MCP tools:
 
-1. Accepts a Docker image name, an optional Composer script name, and an optional test file path.
-2. Executes `docker run --rm <image> composer <command> [-- <test_file>]`.
-3. Returns the full stdout + stderr output so the caller can evaluate pass/fail.
+- **`run_php_tests`** — runs the full test suite
+- **`run_php_test_file`** — runs a single test file
+
+Both execute `docker run --rm -v <host_path>:<container_path> -w <container_path> <image> composer <command> [-- <test_file>]` and return the full stdout + stderr so the caller can evaluate pass/fail.
 
 ## Prerequisites
 
@@ -94,28 +95,37 @@ The server accepts named arguments to configure defaults. All three can also be 
 }
 ```
 
-Then restart Claude Code. The `run_container_php_tests` tool will be available automatically.
+Then restart Claude Code. The `run_php_tests` and `run_php_test_file` tools will be available automatically.
 
 ## Tool reference
 
-**Tool name:** `run_container_php_tests`
+### `run_php_tests` — run the full test suite
 
 | Parameter | Type | Required | Default | Description |
 |-----------|------|----------|---------|-------------|
-| `container_name` | string | Yes | server arg | Docker image to run (e.g. `my-php-app:latest`). Falls back to the value passed as server argument. |
+| `container_name` | string | Yes | server arg | Docker image to run (e.g. `my-php-app:latest`) |
 | `command` | string | No | `"test"` | Composer script name to execute |
-| `test_file` | string | No | — | Path to a specific test file inside the container |
+| `host_path` | string | No | server arg or cwd | Absolute path to the project on the host to mount into the container |
+| `container_path` | string | No | server arg or `/var/www` | Path inside the container where the project will be mounted |
+
+### `run_php_test_file` — run a single test file
+
+| Parameter | Type | Required | Default | Description |
+|-----------|------|----------|---------|-------------|
+| `container_name` | string | Yes | server arg | Docker image to run (e.g. `my-php-app:latest`) |
+| `test_file` | string | Yes | — | Path to the test file inside the container (e.g. `tests/Unit/UserTest.php`) |
+| `command` | string | No | `"test"` | Composer script name to execute |
 | `host_path` | string | No | server arg or cwd | Absolute path to the project on the host to mount into the container |
 | `container_path` | string | No | server arg or `/var/www` | Path inside the container where the project will be mounted |
 
 ## Example prompts
 
-Run all tests using the default `test` script:
+Run all tests:
 ```
 Run the tests for the my-php-app:latest container.
 ```
 
-Run a specific Composer script (`test:unit`):
+Run only unit tests using a specific Composer script:
 ```
 Run only the unit tests using the test:unit script for container my-php-app:latest.
 ```
@@ -125,21 +135,21 @@ Run a single test file:
 Run tests/Unit/UserTest.php in the my-php-app:latest container.
 ```
 
-Override the host and container paths per call:
+Override mount paths:
 ```
 Run the tests for my-php-app:latest, mounting /home/user/my-project on the host to /app inside the container.
 ```
 
 ## Example tool calls
 
-Run all tests with defaults:
+**`run_php_tests`** — full suite with defaults:
 ```json
 {
   "container_name": "my-php-app:latest"
 }
 ```
 
-Run a specific Composer script:
+**`run_php_tests`** — specific Composer script:
 ```json
 {
   "container_name": "my-php-app:latest",
@@ -147,20 +157,18 @@ Run a specific Composer script:
 }
 ```
 
-Run a single test file:
+**`run_php_test_file`** — single test file:
 ```json
 {
   "container_name": "my-php-app:latest",
-  "command": "test",
   "test_file": "tests/Unit/UserTest.php"
 }
 ```
 
-Override mount paths:
+**`run_php_tests`** — override mount paths:
 ```json
 {
   "container_name": "my-php-app:latest",
-  "command": "test",
   "host_path": "/home/user/my-project",
   "container_path": "/app"
 }
@@ -169,7 +177,7 @@ Override mount paths:
 ## How it works
 
 1. The server is launched by the MCP host (Claude Code) and communicates over stdin/stdout using the JSON-RPC 2.0 MCP protocol.
-2. When `run_container_php_tests` is called, the server executes:
+2. When a tool is called, the server executes:
    ```
    docker run --rm -v <host_path>:<container_path> -w <container_path> <image> composer <command> [-- <test_file>]
    ```
