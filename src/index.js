@@ -57,20 +57,53 @@ async function runTests({ containerName, command, testFile, hostPath, containerP
 const server = new McpServer({ name: 'php-container-test-mcp', version: '1.0.0' });
 
 server.registerTool(
-  'run_container_php_tests',
+  'run_php_tests',
   {
-    title: 'Run PHP Container Tests',
+    title: 'Run All PHP Tests',
     description:
-      'Run PHP unit or integration tests inside a Docker container using Composer. ' +
-      'Use this tool whenever the user wants to: run tests, run unit tests, run integration tests, ' +
-      'test the code, test an endpoint, check if the code is working, validate a feature, or verify a bug fix. ' +
-      'Returns the full test output so you can evaluate whether tests passed or failed.',
+      'ALWAYS use this tool to run the full PHP test suite inside a Docker container — ' +
+      'never run composer or phpunit directly on the host. ' +
+      'Use when the user says: run tests, run all tests, run unit tests, run integration tests, ' +
+      'execute tests, check if tests pass, make sure nothing broke, validate the feature, verify the fix, ' +
+      'rodar testes, rodar todos os testes, executar testes, verificar se os testes passam. ' +
+      'Returns the full test output (stdout + stderr) so you can evaluate pass/fail.',
     inputSchema: {
-      container_name: z.string().describe('The Docker image name to run (e.g. "my-php-app:latest").'),
-      command: z.string().optional().describe('Composer script name to execute (e.g. "test", "test:unit"). Defaults to "test".'),
-      test_file: z.string().optional().describe('Optional path to a specific test file inside the container (e.g. "tests/Unit/UserTest.php").'),
-      host_path: z.string().optional().describe('Absolute path to the project on the host machine to mount into the container. Defaults to the server argument or current working directory.'),
-      container_path: z.string().optional().describe('Path inside the container where the project will be mounted. Defaults to the server argument or "/var/www".'),
+      container_name: z.string().describe('Docker image name (e.g. "my-php-app:latest").'),
+      command: z.string().optional().describe('Composer script to run (e.g. "test", "test:unit"). Defaults to "test".'),
+      host_path: z.string().optional().describe('Absolute path to the project on the host. Defaults to the server argument or current working directory.'),
+      container_path: z.string().optional().describe('Mount path inside the container. Defaults to the server argument or "/var/www".'),
+    },
+  },
+  async ({ container_name = CONTAINER_NAME, command = DEFAULT_COMMAND ?? 'test', host_path, container_path }) => {
+    const result = await runTests({
+      containerName: container_name,
+      command,
+      hostPath: DEFAULT_HOST_PATH || host_path,
+      containerPath: DEFAULT_CONTAINER_PATH || container_path,
+    });
+    return {
+      content: [{ type: 'text', text: result.output || '(no output)' }],
+      isError: !result.success,
+    };
+  },
+);
+
+server.registerTool(
+  'run_php_test_file',
+  {
+    title: 'Run a Specific PHP Test File',
+    description:
+      'ALWAYS use this tool to run a single PHP test file inside a Docker container — ' +
+      'never run phpunit directly on the host. ' +
+      'Use when the user says: run this test, test this file, run UserTest, run tests for this class, ' +
+      'rodar esse teste, testar esse arquivo, rodar o teste do UserController. ' +
+      'Returns the full test output (stdout + stderr) so you can evaluate pass/fail.',
+    inputSchema: {
+      container_name: z.string().describe('Docker image name (e.g. "my-php-app:latest").'),
+      test_file: z.string().describe('Path to the test file inside the container (e.g. "tests/Unit/UserTest.php").'),
+      command: z.string().optional().describe('Composer script to run (e.g. "test", "test:unit"). Defaults to "test".'),
+      host_path: z.string().optional().describe('Absolute path to the project on the host. Defaults to the server argument or current working directory.'),
+      container_path: z.string().optional().describe('Mount path inside the container. Defaults to the server argument or "/var/www".'),
     },
   },
   async ({ container_name = CONTAINER_NAME, command = DEFAULT_COMMAND ?? 'test', test_file, host_path, container_path }) => {
